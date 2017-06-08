@@ -6,10 +6,10 @@
 
 ## Devices
 
-* **Node**: One node on Aliyun
-* **Memory**: 1GB
-* **CPU**: 1 core
-* **Band**: 1Mbps
+* Node 1 on Aliyun:
+  * **Memory**: 1GB
+  * **CPU**: 1 core
+  * **Band**: 1Mbps
 
 ## Demo
 
@@ -47,6 +47,8 @@ Here, we use Nginx as static resources server. Client can directly request stati
 
 PS: We directly deploy the Nginx on the node, but not deploy the Nginx server on docker because it needs to use the port other servers expose on the localhost. If we use docker, it will be a more complicated case, for it needs to connect different ports between these docker containers it denpends on.
 
+PSS: We need to make sure the user of Nginx `www-data` have the access to the root dir configured  
+
 ## Docker CI/CD
 
 Because we only have one node so we use docker container to simulate multiple nodes in the deployment. By using jenkins we can achieve continuous deployments on our node.
@@ -69,19 +71,28 @@ And we use jenkins github plugin, which allow us to pull code from github once t
 
 ### Database Server
 
-To rebuild the latest image and run a new container depends on the image. Because the web service server is relayed on the db server. So it is not proper to rebuild it directly. Later, we will use docker compose to declare the dependencies.
+To rebuild the latest image and run a new container depends on the image. Because the web service server relies on the db server. So it is not proper to rebuild it directly. So we have to stop the web service server `restful-server` container before stop `db` container to avoid connect error. And after build the new `db-server`image, we have to rebuild the `restful-server` image or it will occur error.
+
+But later, in a proper and better way, we may use docker compose to declare the dependencies during building.
 
 ``` shell
+docker stop restful-server
 docker stop db
 docker rm db
 docker rmi db-server
 docker build -t db-server 
 docker run -d --name db db-server
+
+docker rm restful-server
+docker rmi kinpzz/restful-server
+docker build -t kinpzz/restful-server ../docker-jenkins-test
+docker run -d -p 127.0.0.1:8082:8082 --name restful-server --link db:db-server kinpzz/restful-server
+
 ```
 
 ### Web Service Server
 
-Run the run.sh after jenkins scripts.
+Run the run.sh after jenkins scripts executing.
 
 ```shell
 export MAVEN_HOME=/opt/maven
@@ -98,9 +109,30 @@ docker run -d -p 127.0.0.1:8082:8082 --name restful-server --link db:db-server k
 
 Here, we use in maven in jenkins docker in order to use the maven package cache to speed up the build process. And copy the `.war` to execute in the new images instead of build the maven project in the new docker. And use ``--link`` tag to connect the web service container with database server container by bridge. So the web service container can connect to the port of database server without exposing the port of database server to public.
 
-
-
 Here, we can deploy the new version once we commit the code to GitHub.
+
+### Web Page building
+
+Run run.sh after jenkins scripts executing.
+
+```shell
+# for jenkins run shell
+docker stop web-server
+docker rm web-server
+docker rmi web-server
+docker build -t web-server .
+docker run -d --name web-server web-server
+# save to /home/kinpzz/webpage
+docker cp web-server:/web-server/dist /jenkins/webpage
+```
+
+Here, we only generate the static web resources on the `web-server` container. The role of static resources server is played by Nginx. And then use the `docker cp` command to copy the static resources to the host, which the root in `Nginx.conf` is.
+
+
+
+## Blog
+
+Here you can refer to a chinese version on the blog : [Jenkins + Docker 实现项目持续部署](https://blog.kinpzz.com/2017/06/08/jenkins-docker-ci-cd/)
 
 ## TODO
 
