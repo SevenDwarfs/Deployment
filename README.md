@@ -47,13 +47,29 @@ Here, we use Nginx as static resources server. Client can directly request stati
 
 PS: We directly deploy the Nginx on the node, but not deploy the Nginx server on docker because it needs to use the port other servers expose on the localhost. If we use docker, it will be a more complicated case, for it needs to connect different ports between these docker containers it denpends on.
 
-## Docker CD
+## Docker CI/CD
 
 Because we only have one node so we use docker container to simulate multiple nodes in the deployment. By using jenkins we can achieve continuous deployments on our node.
 
+### Jenkins
+
+We use jenkins docker image with maven and docker environment to do the ci jobs. Here we use the image lw96/java8-jenkins-maven-git-vim, which we can find on the docker hub.
+
+```
+docker run -d -p 0.0.0.0:8080:8080 -v /root/data:/jenkins \
+-v /etc/localtime:/etc/localtime:ro \
+-v /root/data/maven:/opt/maven \
+-v /var/run/docker.sock:/var/run/docker.sock \
+--name jenkins2 lw96/java8-jenkins-maven-git-vim
+```
+
+We use the volume to map maven from our host to docker container and map `docker.sock`. By share the `docker.sock`, the docker command executed on jenkins environment will be sent to host and executed. So we can create other docker containers or images on the host from the jenkins container. And this is our foundment of doing the ci/cd jobs.
+
+And we use jenkins github plugin, which allow us to pull code from github once the trigger is active. (It is active when new code push to github or pull request is made)
+
 ### Database Server
 
-Run run.sh after jenkins scripts. To rebuild the latest image and run a new container depends on the image.
+To rebuild the latest image and run a new container depends on the image. Because the web service server is relayed on the db server. So it is not proper to rebuild it directly. Later, we will use docker compose to declare the dependencies.
 
 ``` shell
 docker stop db
@@ -63,7 +79,7 @@ docker build -t db-server
 docker run -d --name db db-server
 ```
 
-### Web Service
+### Web Service Server
 
 Run the run.sh after jenkins scripts.
 
