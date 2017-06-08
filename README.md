@@ -2,7 +2,7 @@
 
 ## UML Deployment
 
-![](https://ws1.sinaimg.cn/large/6177e8b1gy1fgdsmdwahfj21b40jwq5a.jpg)
+![uml_deployment](./src/uml_deployment.png)
 
 ## Devices
 
