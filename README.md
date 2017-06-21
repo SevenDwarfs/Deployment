@@ -17,31 +17,11 @@
 
 Due to the demand of records  of web server in China, we can not use 80 port with domain name without records in government. So we use 8000 port instead.
 
-## Nginx
+## Nginx*([nginx.conf](/nginx.conf))*
 
 In order to hide the service port of web service server and database server ports from clients, which is not secure to expose them, we use Nginx as a reverse proxy.
 
 We configure the `nginx.conf`on`/etc/nginx/nginx.conf`by adding server configuration on `http` tag.
-
-```
-...
-       server {
-                listen 8000;
-                server_name aliyun.kinpzz.com:8000;
-                charset utf-8;
-                # 反向代理RESTful server
-                location /api/ {
-                        proxy_pass http://127.0.0.1:8082;
-                }
-                # 获取静态资源
-                location / {
-                                # 静态资源位置
-                        root /root/data/webpage/dist;
-                                index index.html;
-                }
-       }
-...
-```
 
 Here, we use Nginx as static resources server. Client can directly request static resources from the 8000 port and Nginx will directly reply. And Nginx relay the api request to 8081 port on localhost, which web service server is listening. This is more secure than directly expose the service port to public. 
 
